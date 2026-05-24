@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>营销推广数据汇总系统 - Premium Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gold: {
+                            50: '#FDFBF7',
+                            100: '#F5EFE6',
+                            200: '#EADBC8',
+                            500: '#C5A880',
+                            600: '#B39266',
+                            700: '#91724B',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Noto Sans SC"', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        body {
+            background-color: #F8F9FA;
+            font-family: 'Noto Sans SC', sans-serif;
+            letter-spacing: -0.01em;
+        }
+        /* 隐藏滚动条但保留功能 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* 苹果/飞书风的毛玻璃与阴影 */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(234, 219, 200, 0.4);
+        }
+        .premium-shadow {
+            box-shadow: 0 4px 20px -2px rgba(145, 114, 75, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+        }
+        .custom-toast {
+            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-20px) scale(0.95); opacity: 0; }
+            to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="text-zinc-800 antialiased min-h-screen flex flex-col">
+
+    <div id="readOnlyBanner" class="hidden bg-amber-50 border-b border-amber-200/60 px-4 py-2 text-center text-xs text-amber-700 font-medium transition-all">
+        <span class="inline-flex items-center gap-1.5">
+            <i data-lucide="eye" class="w-3.5 h-3.5"></i> 当前处于“游客只读模式”，所有修改操作已被禁用。可在设置中切换为管理员模式。
+        </span>
+    </div>
+
+    <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-zinc-200/60 px-4 lg:px-8 py-3.5 flex items-center justify-between premium-shadow">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-gold-600 to-gold-200 flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                M
+            </div>
+            <div>
+                <h1 class="text-base font-semibold text-zinc-900 tracking-tight">营销推广数据汇总系统</h1>
+                <p class="text-[11px] text-zinc-400">Marketing & Promotion Analytics Engine</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <span id="roleBadge" class="px-2.5 py-1 rounded-full text-xs font-medium bg-gold-50 text-gold-700 border border-gold-200 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-gold-500 animate-pulse"></span>
+                管理员模式
+            </span>
+            
+            <button onclick="App.UI.toggleModal('settingsModal', true)" class="p-2 text-zinc-500 hover:text-gold-600 hover:bg-zinc-50 rounded-xl transition-all duration-200">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-[1600px] w-full mx-auto p-4 lg:p-8 grid grid-cols-1 lg:grid-cols-4 gap-6">
+        
+        <div class="lg:col-span-1 flex flex-col gap-6">
+            
+            <div class="grid grid-cols-2 lg:grid-cols-1 gap-4">
+                <div class="glass-card premium-shadow rounded-2xl p-4 flex flex-col justify-between min-h-[100px]">
+                    <span class="text-xs font-medium text-zinc-400 flex items-center justify-between">
+                        总推广花费 <i data-lucide="coins" class="w-3.5 h-3.5 text-gold-500"></i>
+                    </span>
+                    <div class="mt-2">
+                        <span class="text-2xl font-bold tracking-tight text-zinc-900" id="statTotalCost">¥0.00</span>
+                        <div class="text-[10px] text-zinc-400 mt-1" id="statCostCount">共计 0 笔推广账单</div>
+                    </div>
+                </div>
+                
+                <div class="glass-card premium-shadow rounded-2xl p-4 flex flex-col justify-between min-h-[100px]">
+                    <span class="text-xs font-medium text-zinc-400 flex items-center justify-between">
+                        推广费用投产比 <i data-lucide="activity" class="w-3.5 h-3.5 text-zinc-400"></i>
+                    </span>
+                    <div class="mt-2">
+                        <span class="text-2xl font-bold tracking-tight text-zinc-900" id="statRoi">¥0.00</span>
+                        <div class="text-[10px] text-zinc-400 mt-1">单初诊获客成本 (费用÷人数)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card premium-shadow rounded-2xl p-5 flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold text-zinc-800 flex items-center gap-2">
+                        <i data-lucide="layers" class="w-4 h-4 text-gold-500"></i> 平台与账户管理
+                    </h3>
+                    <button onclick="App.Data.addPlatform()" class="text-xs text-gold-600 font-medium hover:text-gold-700 inline-flex items-center gap-0.5 admin-editable">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i> 新增
+                    </button>
+                </div>
+                
+                <div id="platformContainer" class="space-y-2 max-h-[260px] overflow-y-auto pr-1 no-scrollbar">
+                    </div>
+            </div>
+
+            <div class="glass-card premium-shadow rounded-2xl p-5 cursor-pointer hover:border-gold-300 transition-all duration-300 group relative" onclick="App.UI.openChartDetailModal()">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-zinc-800 flex items-center gap-2">
+                        <i data-lucide="pie-chart" class="w-4 h-4 text-gold-500"></i> 类别消费占比
+                    </h3>
+                    <span class="text-[11px] text-gold-600 bg-gold-50 px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                        点击放大查看 <i data-lucide="maximize-2" class="w-2.5 h-2.5"></i>
+                    </span>
+                </div>
+                <div class="w-full h-[180px] flex items-center justify-center">
+                    <canvas id="miniPieChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="lg:col-span-3 flex flex-col gap-6">
+            
+            <div class="glass-card premium-shadow rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="flex p-0.5 bg-zinc-100/80 rounded-xl w-full md:w-auto">
+                    <button onclick="App.UI.switchTab('expense')" id="tabBtn-expense" class="flex-1 md:flex-none text-xs font-medium px-4 py-2 rounded-lg transition-all duration-200 bg-white text-zinc-800 shadow-sm">
+                        推广费用台账
+                    </button>
+                    <button onclick="App.UI.switchTab('visit')" id="tabBtn-visit" class="flex-1 md:flex-none text-xs font-medium px-4 py-2 rounded-lg transition-all duration-200 text-zinc-500 hover:text-zinc-800">
+                        初诊数据台账
+                    </button>
+                    <button onclick="App.UI.switchTab('recycle')" id="tabBtn-recycle" class="flex-1 md:flex-none text-xs font-medium px-4 py-2 rounded-lg transition-all duration-200 text-zinc-500 hover:text-zinc-800 flex items-center justify-center gap-1">
+                        回收站 <span id="recycleCount" class="bg-zinc-200 text-zinc-600 px-1.5 py-0.2 rounded-full text-[10px]">0</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2.5 w-full md:w-auto">
+                    <div class="relative flex-1 md:w-60">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400"></i>
+                        <input type="text" id="globalSearchInput" oninput="App.Data.handleSearch(this.value)" placeholder="搜索账单、科室或子项..." class="w-full pl-9 pr-4 py-1.5 text-xs bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-gold-500 focus:border-gold-500 transition-all">
+                    </div>
+                    <button onclick="App.Data.exportToExcel()" class="px-3 py-1.5 text-xs border border-zinc-200 bg-white hover:bg-zinc-50 rounded-xl flex items-center gap-1.5 text-zinc-600 font-medium transition-colors">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i> 导出
+                    </button>
+                    <button id="addRecordMainBtn" onclick="App.UI.openAddModal()" class="px-3 py-1.5 text-xs bg-gold-500 hover:bg-gold-600 text-white rounded-xl flex items-center gap-1.5 font-medium shadow-sm transition-colors admin-editable">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i> 记一笔
+                    </button>
+                </div>
+            </div>
+
+            <div class="glass-card premium-shadow rounded-2xl overflow-hidden flex flex-col flex-1 min-h-[450px]">
+                
+                <div id="bulkActionPanel" class="hidden bg-gold-50/70 border-b border-gold-200/50 px-6 py-2.5 flex items-center justify-between text-xs text-gold-800 animate-fadeIn">
+                    <span class="inline-flex items-center gap-2">
+                        <i data-lucide="check-square" class="w-4 h-4 text-gold-600"></i> 已选择 <span id="selectedCount" class="font-bold text-sm">0</span> 项数据记录
+                    </span>
+                    <button onclick="App.Data.triggerBulkDelete()" class="px-2.5 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg font-medium transition-all inline-flex items-center gap-1 admin-editable">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> 批量删除
+                    </button>
+                </div>
+
+                <div class="flex-1 overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-zinc-100 bg-zinc-50/50 text-zinc-400 text-[11px] uppercase tracking-wider font-medium">
+                                <th class="py-3 px-6 w-10">
+                                    <input type="checkbox" id="selectAllCheckbox" onchange="App.UI.toggleSelectAll(this)" class="rounded border-zinc-300 text-gold-600 focus:ring-gold-500 admin-editable">
+                                </th>
+                                <th class="py-3 px-4" id="thDate">发生日期</th>
+                                <th class="py-3 px-4">关联渠道</th>
+                                <th class="py-3 px-4" id="thContent">事项摘要 / 分类</th>
+                                <th class="py-3 px-4 text-right" id="thAmount">发生数额</th>
+                                <th class="py-3 px-6 text-center w-28">控制台</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mainTableBody" class="divide-y divide-zinc-100 text-xs text-zinc-600">
+                            </tbody>
+                    </table>
+                </div>
+
+                <footer class="border-t border-zinc-100 px-6 py-3.5 flex items-center justify-between text-xs text-zinc-400 bg-zinc-50/30">
+                    <div id="paginationInfo">显示 0 - 0 条，共 0 条记录</div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="App.Data.changePage(-1)" id="btnPrevPage" class="p-1.5 border border-zinc-200 bg-white hover:bg-zinc-50 rounded-lg text-zinc-500 disabled:opacity-40 disabled:hover:bg-white transition-all">
+                            <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button onclick="App.Data.changePage(1)" id="btnNextPage" class="p-1.5 border border-zinc-200 bg-white hover:bg-zinc-50 rounded-lg text-zinc-500 disabled:opacity-40 disabled:hover:bg-white transition-all">
+                            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </footer>
+            </div>
+        </div>
+    </main>
+
+    <div id="expenseModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-zinc-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-md premium-shadow border border-zinc-200/80 p-6 flex flex-col gap-4 animate-scaleUp">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-zinc-900 flex items-center gap-2" id="expenseModalTitle">
+                    <i data-lucide="plus-circle" class="w-4 h-4 text-gold-500"></i> 新增费用记录
+                </h3>
+                <button onclick="App.UI.toggleModal('expenseModal', false)" class="text-zinc-400 hover:text-zinc-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <form id="expenseForm" onsubmit="App.Data.saveExpenseForm(event)" class="space-y-3.5">
+                <input type="hidden" id="expenseId">
+                <div>
+                    <label class="block text-[11px] font-medium text-zinc-400 mb-1">推广平台 *</label>
+                    <select id="expensePlatform" required class="w-full px-3 py-1.5 text-xs bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-gold-500"></select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-zinc-400 mb-1">产生日期 *</label>
+                    <input type="date" id="expenseDate" required class="w-full px-3 py-1.5 text-xs bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-gold-500">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-zinc-400 mb-1">费用用途摘要 *</label>
+                    <input type="text" id="expensePurpose" required placeholder="如：5月达人探店推广流水 / 信息流竞价开户" class="w-full px-3 py-1.5 text-xs bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-gold-500">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-zinc-400 mb-1">花费金额 (元) *</label>
+                    <input type="number" step="0.01" id="expenseAmount" required placeholder="0.00" class="w-full px-3 py-1.5 text-xs bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-gold-500">
+                </div>
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" onclick="App.UI.toggleModal('expenseModal', false)" class="px-3 py-1.5 border border-zinc-200 bg-white hover:bg-zinc-50 rounded-xl text-xs text-zinc-500">取消</button>
+                    <button type="submit" class="px-3 py-1.5 bg-gold-500 hover:bg-gold-600 text-white font-medium rounded-xl text-xs shadow-sm">提交保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="visitModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-zinc-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-2xl premium-shadow border border-zinc-200/80 p-6 flex flex-col gap-4 animate-scaleUp">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-zinc-900 flex items-center gap-2" id="visitModalTitle">
+                    <i data-lucide="file-text" class="w-4 h-4 text-gold-500"></i> 新增初诊录入 (客户到诊数据闭环)
+                </h3>
+                <button onclick="App.UI.toggleModal('visitModal', false)" class="text-zinc-400 hover:text-zinc-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <form id="visitForm" onsubmit="App.Data.saveVisitForm(event)" class="space-y-4">
+                <input type="hidden" id="visitId">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                    <div>
+                        <label class="block text-[11px] font-medium text-zinc-400 mb-1">来源平台 *</label>
+                        <select id="visitPlatform" required class="w-full px-3 py-1.5 text-xs bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-gold-500"></select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-zinc-400 mb-1">到诊日期 *</label>
+                        <input type="date" id="visitDate" required class="w-full px-3 py-1.5 text-xs bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-gold-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-zinc-400 mb-1">业务主板块分类 *</label>
+                        <select id="visitCategory" required class="w-full px-3 py-1.5 text-xs bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-gold-500">
+                            <option value="脱毛护理">脱毛护理</option>
+                            <option value="皮肤项目">皮肤项目</option>
+                            <option value="注射项目">注射项目</option>
+                            <option value="手术项目">手术项目</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="border border-zinc-200/60 rounded-xl p-3 bg-zinc-50/50">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">细分项目成交清单明细</span>
+                        <button type="button" onclick="App.UI.addDetailRow()" class="text-[11px] text-gold-600 font-medium hover:text-gold-700 flex items-center gap-0.5">
+                            <i data-lucide="plus" class="w-3 h-3"></i> 增加明细子项
+                        </button>
+                    </div>
+                    
+                    <div class="max-h-[160px] overflow-y-auto space-y-2 pr-1 no-scrollbar" id="detailRowsContainer">
+                        </div>
+
+                    <div class="flex items-center justify-end mt-3 pt-2.5 border-t border-zinc-200/60 text-xs">
+                        <span class="text-zinc-400 mr-2">总成交计:</span>
+                        <span id="visitTotalComputed" class="font-bold text-gold-600 text-sm">¥0.00</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-2">
+                    <button type="button" onclick="App.UI.toggleModal('visitModal', false)" class="px-3 py-1.5 border border-zinc-200 bg-white hover:bg-zinc-50 rounded-xl text-xs text-zinc-500">取消</button>
+                    <button type="submit" class="px-3 py-1.5 bg-gold-500 hover:bg-gold-600 text-white font-medium rounded-xl text-xs shadow-sm">提交保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="chartDetailModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-zinc-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-2xl premium-shadow border border-zinc-200/80 p-6 flex flex-col gap-4 animate-scaleUp">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-zinc-900 flex items-center gap-2">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4 text-gold-500"></i> 数据多维钻取分析中心
+                </h3>
+                <button onclick="App.UI.toggleModal('chartDetailModal', false)" class="text-zinc-400 hover:text-zinc-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div class="w-full h-[240px] flex items-center justify-center mx-auto">
+                    <canvas id="modalPieChart"></canvas>
+                </div>
+                <div class="overflow-x-auto border border-zinc-100 rounded-xl">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-zinc-50 text-zinc-400 font-medium">
+                            <tr>
+                                <th class="py-2 px-3">业务类别</th>
+                                <th class="py-2 px-3 text-right">初诊成交总额</th>
+                                <th class="py-2 px-3 text-right">占比</th>
+                            </tr>
+                        </thead>
+                        <tbody id="chartDetailTableBody" class="divide-y divide-zinc-100 text-zinc-600">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="flex justify-end pt-2">
+                <button onclick="App.UI.toggleModal('chartDetailModal', false)" class="px-3 py-1.5 bg-zinc-900 text-white text-xs font-medium rounded-xl shadow-sm">关闭分析窗口</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-zinc-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-lg premium-shadow border border-zinc-200/80 p-6 flex flex-col gap-5 animate-scaleUp">
+            <div class="flex items-center justify-between border-b border-zinc-100 pb-3">
+                <h3 class="text-sm font-semibold text-zinc-900 flex items-center gap-2">
+                    <i data-lucide="settings-2" class="w-4 h-4 text-gold-500"></i> 全局控制与高阶数据路由拓扑
+                </h3>
+                <button onclick="App.UI.toggleModal('settingsModal', false)" class="text-zinc-400 hover:text-zinc-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            
+            <div class="space-y-4 max-h-[400px] overflow-y-auto pr-1 no-scrollbar">
+                <div class="space-y-1.5">
+                    <label class="block text-[11px] font-medium text-zinc-400 uppercase tracking-wider">系统当前安全级模式</label>
+                    <div class="flex bg-zinc-100 p-0.5 rounded-xl">
+                        <button onclick="App.Data.setRole('admin')" id="roleBtn-admin" class="flex-1 py-1 text-xs font-medium rounded-lg shadow-sm bg-white text-zinc-800">管理员 (读写编辑授权)</button>
+                        <button onclick="App.Data.setRole('guest')" id="roleBtn-guest" class="flex-1 py-1 text-xs font-medium rounded-lg text-zinc-500">安全游客 (隔离只读授权)</button>
+                    </div>
+                </div>
+
+                <hr class="border-zinc-100">
+
+                <div class="space-y-2">
+                    <label class="block text-[11px] font-medium text-zinc-400 uppercase tracking-wider">便携式状态无状态分发链接（安全沙箱）</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="App.Data.generateShareLink(false)" class="p-2 border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 rounded-xl text-left transition-all">
+                            <div class="text-xs font-semibold text-zinc-800 flex items-center gap-1"><i data-lucide="bookmark" class="w-3.5 h-3.5 text-gold-600"></i> 书签魔术链接</div>
+                            <div class="text-[10px] text-zinc-400 mt-0.5">全功能编码硬绑定，可作为本地独立书签备份。</div>
+                        </button>
+                        <button onclick="App.Data.generateShareLink(true)" class="p-2 border border-rose-100 bg-rose-50/20 hover:bg-rose-50/60 text-zinc-700 rounded-xl text-left transition-all">
+                            <div class="text-xs font-semibold text-rose-700 flex items-center gap-1"><i data-lucide="lock" class="w-3.5 h-3.5"></i> 只读快照分发链接</div>
+                            <div class="text-[10px] text-zinc-400 mt-0.5">强行重置下游接收端进入游客环境，防误触。</div>
+                        </button>
+                    </div>
+                </div>
+
+                <hr class="border-zinc-100">
+
+                <div class="space-y-2.5">
+                    <label class="block text-[11px] font-medium text-zinc-400 uppercase tracking-wider flex items-center justify-between">
+                        GitHub Gist 云端持久化同步路由 
+                        <span class="text-[9px] text-zinc-400 normal-case bg-zinc-100 px-1 rounded">填完即自动记忆</span>
+                    </label>
+                    <div class="space-y-2">
+                        <input type="password" id="cfgGistToken" onchange="App.Data.saveCloudConfig()" placeholder="GitHub Personal Access Token (classic 或 fine-grained)" class="w-full px-3 py-1.5 text-xs bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-gold-500">
+                        <input type="text" id="cfgGistId" onchange="App.Data.saveCloudConfig()" placeholder="Gist ID (留空则在首次同步时自动在云端创建)" class="w-full px-3 py-1.5 text-xs bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-gold-500">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="App.Cloud.syncGistPush()" class="flex-1 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white font-medium rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all">
+                            <i data-lucide="cloud-lightning" class="w-3.5 h-3.5"></i> 推送同步至云
+                        </button>
+                        <button type="button" onclick="App.Cloud.syncGistPull()" class="flex-1 py-1.5 border border-zinc-300 bg-white hover:bg-zinc-50 text-zinc-700 font-medium rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all">
+                            <i data-lucide="cloud-download" class="w-3.5 h-3.5"></i> 从云拉取覆盖
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end pt-1 border-t border-zinc-100">
+                <button onclick="App.UI.toggleModal('settingsModal', false)" class="px-3 py-1.5 border border-zinc-200 bg-white hover:bg-zinc-50 rounded-xl text-xs text-zinc-600 font-medium">确认返回</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmModal" class="hidden fixed inset-0 z-[60] bg-zinc-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-sm premium-shadow border border-zinc-200/80 p-5 flex flex-col gap-3.5 animate-scaleUp">
+            <h4 class="text-xs font-semibold text-zinc-900 flex items-center gap-1.5">
+                <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-500"></i> 触发高敏感性系统行为确认
+            </h4>
+            <p id="confirmModalText" class="text-xs text-zinc-500 leading-relaxed">确定要执行此危险操作吗？一旦发生，此链路将不可逆。</p>
+            <div class="flex items-center justify-end gap-2 pt-1">
+                <button id="confirmCancelBtn" type="button" class="px-2.5 py-1.2 border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-500 rounded-lg text-xs">取消</button>
+                <button id="confirmSubmitBtn" type="button" class="px-2.5 py-1.2 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-lg text-xs shadow-sm">核心确认</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+
+
+    <script>
+        /**
+         * 营销推广数据汇总系统 - 面向对象高内聚模块化架构
+         * 业务规则：全面杜绝全局污染，使用现代 ES6+ 自驱架构
+         */
+        const App = (() => {
+            // ==================== 1. 系统核心态模型 ====================
+            const STATE = {
+                currentTab: 'expense', // expense | visit | recycle
+                currentPlatformId: 'all',
+                searchQuery: '',
+                currentPage: 1,
+                pageSize: 10,
+                role: 'admin', // admin | guest
+                selectedIds: [],
+                
+                // 数据实体
+                platforms: [],
+                expenses: [],
+                visits: [],
+                
+                // 云同步配置
+                cloud: {
+                    gistToken: '',
+                    gistId: ''
+                }
+            };
+
+            // 内置静态初始化种子数据 (演示闭环流)
+            const DEMO_SEEDS = {
+                platforms: [
+                    { id: 'p1', name: '美团医美', account: '运营1号坑-张经理' },
+                    { id: 'p2', name: '抖音本地生活', account: '信息流拓客-王主管' },
+                    { id: 'p3', name: '小红书种草', account: 'KOL矩阵-李老师' }
+                ],
+                expenses: [
+                    { id: 'e1', platformId: 'p1', date: '2026-05-01', purpose: '美团平台信息流竞价充值', amount: 8000, isDeleted: false },
+                    { id: 'e2', platformId: 'p2', date: '2026-05-03', purpose: '抖音超级过滤投流费用', amount: 15000, isDeleted: false },
+                    { id: 'e3', platformId: 'p3', date: '2026-05-10', purpose: '小红书头部美妆达人5人图文种草', amount: 12000, isDeleted: false },
+                    { id: 'e4', platformId: 'p1', date: '2026-05-12', purpose: '美团大促会场坑位费摊销', amount: 4500, isDeleted: false }
+                ],
+                visits: [
+                    { id: 'v1', platformId: 'p1', date: '2026-05-04', category: '皮肤项目', items: [
+                        { name: '超声炮面部尊享版', count: 3, amount: 8400 },
+                        { name: '光子嫩肤全模式', count: 10, amount: 3900 }
+                    ], isDeleted: false },
+                    { id: 'v2', platformId: 'p2', date: '2026-05-08', category: '注射项目', items: [
+                        { name: '玻尿酸面部微雕', count: 4, amount: 16000 }
+                    ], isDeleted: false },
+                    { id: 'v3', platformId: 'p3', date: '2026-05-11', category: '脱毛护理', items: [
+                        { name: '冰点脱毛年卡', count: 25, amount: 5000 }
+                    ], isDeleted: false },
+                    { id: 'v4', platformId: 'p2', date: '2026-05-15', category: '手术项目', items: [
+                        { name: '眼综合精致雕琢', count: 1, amount: 12800 },
+                        { name: '鼻部多维复合塑形', count: 1, amount: 28000 }
+                    ], isDeleted: false }
+                ]
+            };
+
+            // 图表对象缓存指针，避免内存泄漏
+            let miniChartInstance = null;
+            let modalChartInstance = null;
+
+            // ==================== 2. 数据引擎模块 ====================
+            const DataEngine = {
+                init() {
+                    // 读取本地配置与数据
+                    const localData = localStorage.getItem('PROMOTION_SYS_DATA');
+                    const cloudCfg = localStorage.getItem('PROMOTION_SYS_CLOUD');
+                    
+                    if (cloudCfg) {
+                        try { STATE.cloud = JSON.parse(cloudCfg); } catch(e) {}
+                    }
+                    
+                    // 检查 URL 携带的硬编码魔术链接
+                    const urlParams = new URLSearchParams(window.location.search);
+                    if (urlParams.get('mode') === 'guest') STATE.role = 'guest';
+                    
+                    const encodedData = urlParams.get('data');
+                    if (encodedData) {
+                        try {
+                            const decoded = JSON.parse(decodeURIComponent(escape(atob(encodedData))));
+                            STATE.platforms = decoded.platforms || [];
+                            STATE.expenses = decoded.expenses || [];
+                            STATE.visits = decoded.visits || [];
+                            UIEngine.showToast('成功解析魔术分发链路数据', 'success');
+                        } catch (e) {
+                            UIEngine.showToast('魔术解密校验失败', 'error');
+                        }
+                    } else if (localData) {
+                        try {
+                            const parsed = JSON.parse(localData);
+                            STATE.platforms = parsed.platforms || [];
+                            STATE.expenses = parsed.expenses || [];
+                            STATE.visits = parsed.visits || [];
+                        } catch(e) { this.loadSeeds(); }
+                    } else {
+                        this.loadSeeds();
+                    }
+                    
+                    // 同步设置界面输入框显示
+                    document.getElementById('cfgGistToken').value = STATE.cloud.gistToken || '';
+                    document.getElementById('cfgGistId').value = STATE.cloud.gistId || '';
+                    
+                    this.saveAndRefresh();
+                },
+                loadSeeds() {
+                    STATE.platforms = JSON.parse(JSON.stringify(DEMO_SEEDS.platforms));
+                    STATE.expenses = JSON.parse(JSON.stringify(DEMO_SEEDS.expenses));
+                    STATE.visits = JSON.parse(JSON.stringify(DEMO_SEEDS.visits));
+                },
+                saveAndRefresh() {
+                    localStorage.setItem('PROMOTION_SYS_DATA', JSON.stringify({
+                        platforms: STATE.platforms,
+                        expenses: STATE.expenses,
+                        visits: STATE.visits
+                    }));
+                    
+                    // 权限联动
+                    UIEngine.applyRolePermissions();
+                    // 重新汇总统计、绘制图表、渲染视图
+                    UIEngine.renderAll();
+                    
+                    // 静默上云（如果配置了 Token 且处于管理员模式）
+                    if (STATE.role === 'admin' && STATE.cloud.gistToken && STATE.cloud.gistId) {
+                        CloudEngine.silentPushGist();
+                    }
+                },
+                saveCloudConfig() {
+                    STATE.cloud.gistToken = document.getElementById('cfgGistToken').value.trim();
+                    STATE.cloud.gistId = document.getElementById('cfgGistId').value.trim();
+                    localStorage.setItem('PROMOTION_SYS_CLOUD', JSON.stringify(STATE.cloud));
+                    UIEngine.showToast('云凭证已就地加密保存', 'success');
+                },
+                setRole(role) {
+                    STATE.role = role;
+                    UIEngine.applyRolePermissions();
+                    UIEngine.showToast(`系统安全上下文切换为: ${role === 'admin' ? '管理员' : '只读游客'}`, 'success');
+                    this.saveAndRefresh();
+                    UIEngine.toggleModal('settingsModal', false);
+                },
+                // 平台相关控制
+                addPlatform() {
+                    if (STATE.role === 'guest') return;
+                    const id = 'p_' + Date.now();
+                    STATE.platforms.push({ id, name: '新营销渠道', account: '未命名账户' });
+                    this.saveAndRefresh();
+                    UIEngine.showToast('新增平台空白项，请直接在卡片中编辑', 'info');
+                },
+                updatePlatform(id, field, value) {
+                    if (STATE.role === 'guest') return;
+                    const platform = STATE.platforms.find(p => p.id === id);
+                    if (platform) {
+                        platform[field] = value;
+                        localStorage.setItem('PROMOTION_SYS_DATA', JSON.stringify({
+                            platforms: STATE.platforms, expenses: STATE.expenses, visits: STATE.visits
+                        }));
+                        // 异步刷新统计，不破坏输入框焦点
+                        UIEngine.calculateStatsAndCharts();
+                    }
+                },
+                deletePlatform(id) {
+                    if (STATE.role === 'guest') return;
+                    UIEngine.openConfirmModal('删除该平台会导致相关的台账归属归为未知，确定执行？', () => {
+                        STATE.platforms = STATE.platforms.filter(p => p.id !== id);
+                        if (STATE.currentPlatformId === id) STATE.currentPlatformId = 'all';
+                        this.saveAndRefresh();
+                        UIEngine.showToast('平台已被成功切割移除', 'success');
+                    });
+                },
+                switchPlatform(id) {
+                    STATE.currentPlatformId = id;
+                    STATE.currentPage = 1;
+                    STATE.selectedIds = [];
+                    UIEngine.renderAll();
+                },
+                switchTab(tab) {
+                    STATE.currentTab = tab;
+                    STATE.currentPage = 1;
+                    STATE.selectedIds = [];
+                    UIEngine.renderAll();
+                },
+                handleSearch(val) {
+                    STATE.searchQuery = val.trim().toLowerCase();
+                    STATE.currentPage = 1;
+                    this.saveAndRefresh();
+                },
+                changePage(dir) {
+                    STATE.currentPage += dir;
+                    UIEngine.renderAll();
+                },
+                // 增删改查底层处理函数
+                saveExpenseForm(e) {
+                    e.preventDefault();
+                    if (STATE.role === 'guest') return;
+                    
+                    const id = document.getElementById('expenseId').value;
+                    const data = {
+                        id: id || 'e_' + Date.now(),
+                        platformId: document.getElementById('expensePlatform').value,
+                        date: document.getElementById('expenseDate').value,
+                        purpose: document.getElementById('expensePurpose').value,
+                        amount: parseFloat(document.getElementById('expenseAmount').value) || 0,
+                        isDeleted: false
+                    };
+
+                    if (id) {
+                        const idx = STATE.expenses.findIndex(x => x.id === id);
+                        if (idx > -1) STATE.expenses[idx] = data;
+                    } else {
+                        STATE.expenses.unshift(data);
+                    }
+
+                    UIEngine.toggleModal('expenseModal', false);
+                    this.saveAndRefresh();
+                    UIEngine.showToast('推广账单流保存成功', 'success');
+                },
+                saveVisitForm(e) {
+                    e.preventDefault();
+                    if (STATE.role === 'guest') return;
+
+                    const id = document.getElementById('visitId').value;
+                    
+                    // 获取明细数据
+                    const container = document.getElementById('detailRowsContainer');
+                    const rowDivs = container.querySelectorAll('.detail-row');
+                    const items = [];
+                    
+                    rowDivs.forEach(row => {
+                        const name = row.querySelector('.det-name').value.trim();
+                        const count = parseInt(row.querySelector('.det-count').value) || 0;
+                        const amount = parseFloat(row.querySelector('.det-amount').value) || 0;
+                        if (name) items.push({ name, count, amount });
+                    });
+
+                    if (items.length === 0) {
+                        UIEngine.showToast('请至少录入一条客户细分成交清单明细', 'warning');
+                        return;
+                    }
+
+                    const data = {
+                        id: id || 'v_' + Date.now(),
+                        platformId: document.getElementById('visitPlatform').value,
+                        date: document.getElementById('visitDate').value,
+                        category: document.getElementById('visitCategory').value,
+                        items: items,
+                        isDeleted: false
+                    };
+
+                    if (id) {
+                        const idx = STATE.visits.findIndex(x => x.id === id);
+                        if (idx > -1) STATE.visits[idx] = data;
+                    } else {
+                        STATE.visits.unshift(data);
+                    }
+
+                    UIEngine.toggleModal('visitModal', false);
+                    this.saveAndRefresh();
+                    UIEngine.showToast('初诊出诊成交数据已被完全闭环记录', 'success');
+                },
+                softDelete(id, type) {
+                    if (STATE.role === 'guest') return;
+                    const pool = type === 'expense' ? STATE.expenses : STATE.visits;
+                    const target = pool.find(x => x.id === id);
+                    if (target) {
+                        target.isDeleted = true;
+                        this.saveAndRefresh();
+                        UIEngine.showToast('记录已被移入回收站中', 'info');
+                    }
+                },
+                restoreRecord(id) {
+                    if (STATE.role === 'guest') return;
+                    let found = STATE.expenses.find(x => x.id === id);
+                    if (!found) found = STATE.visits.find(x => x.id === id);
+                    if (found) {
+                        found.isDeleted = false;
+                        this.saveAndRefresh();
+                        UIEngine.showToast('历史数据成功原路恢复', 'success');
+                    }
+                },
+                triggerBulkDelete() {
+                    if (STATE.role === 'guest') return;
+                    if (STATE.selectedIds.length === 0) return;
+                    
+                    UIEngine.openConfirmModal(`确定要对选中的 ${STATE.selectedIds.length} 项账目进行批量软清退吗？`, () => {
+                        STATE.selectedIds.forEach(id => {
+                            const exp = STATE.expenses.find(x => x.id === id);
+                            if (exp) exp.isDeleted = true;
+                            const vis = STATE.visits.find(x => x.id === id);
+                            if (vis) vis.isDeleted = true;
+                        });
+                        STATE.selectedIds = [];
+                        this.saveAndRefresh();
+                        UIEngine.showToast('选中的批量流水已一键清退', 'success');
+                    });
+                },
+                generateShareLink(forceReadOnly) {
+                    try {
+                        const compact = {
+                            platforms: STATE.platforms,
+                            expenses: STATE.expenses,
+                            visits: STATE.visits
+                        };
+                        const base64 = btoa(unescape(encodeURIComponent(JSON.stringify(compact))));
+                        const origin = window.location.origin + window.location.pathname;
+                        const finalUrl = `${origin}?mode=${forceReadOnly ? 'guest' : STATE.role}&data=${base64}`;
+                        
+                        navigator.clipboard.writeText(finalUrl);
+                        UIEngine.showToast(forceReadOnly ? '只读快照安全链接已复制到剪贴板！' : '魔术全状态书签链接已成功分发！', 'success');
+                    } catch(e) {
+                        UIEngine.showToast('数据过大，超出魔术 URL 限制，请转用 Gist 云同步', 'error');
+                    }
+                },
+                exportToExcel() {
+                    const activeData = UIEngine.getFilteredData();
+                    let rows = [];
+                    
+                    if (STATE.currentTab === 'expense') {
+                        rows = activeData.map(x => ({
+                            '发生日期': x.date,
+                            '推广平台': STATE.platforms.find(p => p.id === x.platformId)?.name || '未知平台',
+                            '用途摘要': x.purpose,
+                            '花费总金额(元)': x.amount
+                        }));
+                    } else {
+                        activeData.forEach(x => {
+                            const pName = STATE.platforms.find(p => p.id === x.platformId)?.name || '未知平台';
+                            x.items.forEach(it => {
+                                rows.push({
+                                    '到诊日期': x.date,
+                                    '来源平台': pName,
+                                    '大版块分类': x.category,
+                                    '细分细项': it.name,
+                                    '到诊人数': it.count,
+                                    '成交金额(元)': it.amount
+                                });
+                            });
+                        });
+                    }
+
+                    const worksheet = XLSX.utils.json_to_sheet(rows);
+                    const workbook = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(workbook, worksheet, "DataExport");
+                    XLSX.writeFile(workbook, `营销系统数据导出_${STATE.currentTab}_${Date.now()}.xlsx`);
+                    UIEngine.showToast('生产级级 Excel 数据矩阵文件已下发', 'success');
+                }
+            };
+
+            // ==================== 3. 极简现代 UI 渲染引擎 ====================
+            const UIEngine = {
+                init() {
+                    // 绑定全局静态取消事件防御规则
+                    window.addEventListener('keydown', (e) => {
+                        if (e.key === 'Escape') {
+                            this.toggleModal('expenseModal', false);
+                            this.toggleModal('visitModal', false);
+                            this.toggleModal('chartDetailModal', false);
+                            this.toggleModal('settingsModal', false);
+                            this.toggleModal('confirmModal', false);
+                        }
+                    });
+                    
+                    // 为静态非动态按钮绑定二次确认取消动作
+                    document.getElementById('confirmCancelBtn').onclick = () => this.toggleModal('confirmModal', false);
+                },
+                showToast(msg, type = 'info') {
+                    const container = document.getElementById('toastContainer');
+                    const toast = document.createElement('div');
+                    toast.className = `custom-toast glass-card premium-shadow px-4 py-2.5 rounded-xl text-xs font-medium flex items-center gap-2 pointer-events-auto text-zinc-800 border-l-4`;
+                    
+                    const colors = {
+                        success: 'border-gold-500',
+                        error: 'border-rose-500',
+                        warning: 'border-amber-500',
+                        info: 'border-zinc-400'
+                    };
+                    toast.classList.add(colors[type] || colors.info);
+
+                    let icon = 'info';
+                    if (type === 'success') icon = 'check-circle';
+                    if (type === 'error') icon = 'x-circle';
+                    if (type === 'warning') icon = 'alert-triangle';
+
+                    toast.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 text-zinc-600"></i> <span>${msg}</span>`;
+                    container.appendChild(toast);
+                    lucide.createIcons({ attrs: { class: "w-4 h-4" } });
+
+                    setTimeout(() => {
+                        toast.classList.add('opacity-0', 'transition-all', 'duration-300');
+                        setTimeout(() => toast.remove(), 300);
+                    }, 3500);
+                },
+                openConfirmModal(text, onConfirm) {
+                    document.getElementById('confirmModalText').innerText = text;
+                    this.toggleModal('confirmModal', true);
+                    document.getElementById('confirmSubmitBtn').onclick = () => {
+                        onConfirm();
+                        this.toggleModal('confirmModal', false);
+                    };
+                },
+                toggleModal(id, show) {
+                    const el = document.getElementById(id);
+                    if (show) {
+                        el.classList.remove('hidden');
+                    } else {
+                        el.classList.add('hidden');
+                    }
+                },
+                applyRolePermissions() {
+                    const isGuest = STATE.role === 'guest';
+                    document.getElementById('readOnlyBanner').classList.toggle('hidden', !isGuest);
+                    
+                    const badge = document.getElementById('roleBadge');
+                    if (isGuest) {
+                        badge.className = "px-2.5 py-1 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1";
+                        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> 只读游客模式`;
+                    } else {
+                        badge.className = "px-2.5 py-1 rounded-full text-xs font-medium bg-gold-50 text-gold-700 border border-gold-200 flex items-center gap-1";
+                        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-gold-500 animate-pulse"></span> 管理员模式`;
+                    }
+
+                    // 界面编辑态控件受控隔离
+                    document.querySelectorAll('.admin-editable').forEach(el => {
+                        if (isGuest) {
+                            el.classList.add('opacity-40', 'pointer-events-none');
+                            if (el.tagName === 'INPUT' || el.tagName === 'SELECT') el.setAttribute('disabled', 'true');
+                        } else {
+                            el.classList.remove('opacity-40', 'pointer-events-none');
+                            if (el.tagName === 'INPUT' || el.tagName === 'SELECT') el.removeAttribute('disabled');
+                        }
+                    });
+
+                    // 选项卡联动控制
+                    document.getElementById('roleBtn-admin').className = STATE.role === 'admin' ? "flex-1 py-1 text-xs font-medium rounded-lg shadow-sm bg-white text-zinc-800" : "flex-1 py-1 text-xs font-medium rounded-lg text-zinc-500";
+                    document.getElementById('roleBtn-guest').className = STATE.role === 'guest' ? "flex-1 py-1 text-xs font-medium rounded-lg shadow-sm bg-white text-rose-700" : "flex-1 py-1 text-xs font-medium rounded-lg text-zinc-500";
+                },
+                switchTab(tab) {
+                    document.getElementById(`tabBtn-${STATE.currentTab}`).className = "flex-1 md:flex-none text-xs font-medium px-4 py-2 rounded-lg text-zinc-500 hover:text-zinc-800";
+                    STATE.currentTab = tab;
+                    document.getElementById(`tabBtn-${tab}`).className = "flex-1 md:flex-none text-xs font-medium px-4 py-2 rounded-lg transition-all duration-200 bg-white text-zinc-800 shadow-sm";
+                    
+                    // 动态更变主表头
+                    const thDate = document.getElementById('thDate');
+                    const thContent = document.getElementById('thContent');
+                    const thAmount = document.getElementById('thAmount');
+                    
+                    if (tab === 'expense') {
+                        thDate.innerText = '发生日期';
+                        thContent.innerText = '费用用途摘要';
+                        thAmount.innerText = '花费金额';
+                    } else if (tab === 'visit') {
+                        thDate.innerText = '到诊日期';
+                        thContent.innerText = '大项分类 / 细分明细清单';
+                        thAmount.innerText = '到诊成交总和';
+                    } else {
+                        thDate.innerText = '原有日期';
+                        thContent.innerText = '回收项目摘要/大类';
+                        thAmount.innerText = '历史遗留金额';
+                    }
+                    
+                    DataEngine.switchTab(tab);
+                },
+                getFilteredData() {
+                    let dataset = [];
+                    if (STATE.currentTab === 'expense') {
+                        dataset = STATE.expenses.filter(x => !x.isDeleted);
+                    } else if (STATE.currentTab === 'visit') {
+                        dataset = STATE.visits.filter(x => !x.isDeleted);
+                    } else {
+                        // 回收站统合展示
+                        const delExp = STATE.expenses.filter(x => x.isDeleted).map(x => ({...x, __type: 'expense'}));
+                        const delVis = STATE.visits.filter(x => x.isDeleted).map(x => ({...x, __type: 'visit'}));
+                        dataset = [...delExp, ...delVis];
+                    }
+
+                    // 平台联动过滤
+                    if (STATE.currentPlatformId !== 'all') {
+                        dataset = dataset.filter(x => x.platformId === STATE.currentPlatformId);
+                    }
+
+                    // 全局模糊搜索命中
+                    if (STATE.searchQuery) {
+                        dataset = dataset.filter(x => {
+                            const pName = STATE.platforms.find(p => p.id === x.platformId)?.name || '';
+                            if (pName.toLowerCase().includes(STATE.searchQuery)) return true;
+                            if (x.purpose && x.purpose.toLowerCase().includes(STATE.searchQuery)) return true;
+                            if (x.category && x.category.toLowerCase().includes(STATE.searchQuery)) return true;
+                            if (x.items) {
+                                return x.items.some(it => it.name.toLowerCase().includes(STATE.searchQuery));
+                            }
+                            return false;
+                        });
+                    }
+
+                    return dataset;
+                },
+                calculateStatsAndCharts() {
+                    // 1. 计算各项汇总数
+                    const totalCost = STATE.expenses.filter(x => !x.isDeleted).reduce((acc, c) => acc + c.amount, 0);
+                    const costCount = STATE.expenses.filter(x => !x.isDeleted).length;
+                    
+                    // 初诊总人数 (叠加子项 count)
+                    const totalVisitsCount = STATE.visits.filter(x => !x.isDeleted).reduce((acc, v) => {
+                        return acc + v.items.reduce((sum, i) => sum + i.count, 0);
+                    }, 0);
+
+                    document.getElementById('statTotalCost').innerText = `¥${totalCost.toLocaleString('zh-CN', {minimumFractionDigits: 2})}`;
+                    document.getElementById('statCostCount').innerText = `共计 ${costCount} 笔推广账单`;
+                    
+                    const roi = totalVisitsCount > 0 ? (totalCost / totalVisitsCount) : 0;
+                    document.getElementById('statRoi').innerText = `¥${roi.toLocaleString('zh-CN', {minimumFractionDigits: 2})}`;
+
+                    // 更新回收站徽章
+                    const delCount = STATE.expenses.filter(x => x.isDeleted).length + STATE.visits.filter(x => x.isDeleted).length;
+                    document.getElementById('recycleCount').innerText = delCount;
+
+                    // 2. 抽取类别占比进行 Chart.js 渲染
+                    const categories = { '脱毛护理': 0, '皮肤项目': 0, '注射项目': 0, '手术项目': 0 };
+                    STATE.visits.filter(x => !x.isDeleted).forEach(v => {
+                        if (categories[v.category] !== undefined) {
+                            const subSum = v.items.reduce((acc, i) => acc + i.amount, 0);
+                            categories[v.category] += subSum;
+                        }
+                    });
+
+                    const chartLabels = Object.keys(categories);
+                    const chartData = Object.values(categories);
+                    const chartColors = ['#EADBC8', '#C5A880', '#B39266', '#91724B'];
+
+                    // 销毁并重建迷你图表
+                    if (miniChartInstance) miniChartInstance.destroy();
+                    const ctxMini = document.getElementById('miniPieChart').getContext('22d') || document.getElementById('miniPieChart');
+                    miniChartInstance = new Chart(ctxMini, {
+                        type: 'pie',
+                        data: {
+                            labels: chartLabels,
+                            datasets: [{ data: chartData, backgroundColor: chartColors, borderWidth: 1, borderColor: '#ffffff' }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } }
+                        }
+                    });
+
+                    return { chartLabels, chartData, chartColors };
+                },
+                openChartDetailModal() {
+                    this.toggleModal('chartDetailModal', true);
+                    const { chartLabels, chartData, chartColors } = this.calculateStatsAndCharts();
+                    
+                    if (modalChartInstance) modalChartInstance.destroy();
+                    const ctxModal = document.getElementById('modalPieChart').getContext('2d');
+                    modalChartInstance = new Chart(ctxModal, {
+                        type: 'doughnut',
+                        data: {
+                            labels: chartLabels,
+                            datasets: [{ data: chartData, backgroundColor: chartColors, borderWidth: 2 }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+                        }
+                    });
+
+                    // 渲染侧边钻取明细表格
+                    const tbody = document.getElementById('chartDetailTableBody');
+                    tbody.innerHTML = '';
+                    const totalSum = chartData.reduce((a, b) => a + b, 0);
+                    
+                    chartLabels.forEach((label, i) => {
+                        const val = chartData[i];
+                        const pct = totalSum > 0 ? ((val / totalSum) * 100).toFixed(1) + '%' : '0.0%';
+                        tbody.innerHTML += `
+                            <tr class="hover:bg-zinc-50">
+                                <td class="py-2.5 px-3 font-medium">${label}</td>
+                                <td class="py-2.5 px-3 text-right">¥${val.toFixed(2)}</td>
+                                <td class="py-2.5 px-3 text-right text-zinc-400">${pct}</td>
+                            </tr>
+                        `;
+                    });
+                },
+                renderPlatforms() {
+                    const container = document.getElementById('platformContainer');
+                    container.innerHTML = `
+                        <div onclick="App.Data.switchPlatform('all')" class="flex items-center justify-between p-2 rounded-xl text-xs font-medium cursor-pointer transition-all ${STATE.currentPlatformId === 'all' ? 'bg-gold-100 text-gold-700' : 'hover:bg-zinc-50 text-zinc-500'}">
+                            <span class="flex items-center gap-2"><i data-lucide="globe" class="w-3.5 h-3.5"></i> 全渠道汇总显示</span>
+                            <span class="text-[10px] bg-white/60 px-1.5 py-0.2 rounded-full border border-zinc-200">${STATE.expenses.filter(x=>!x.isDeleted).length + STATE.visits.filter(x=>!x.isDeleted).length}</span>
+                        </div>
+                    `;
+
+                    STATE.platforms.forEach(p => {
+                        const isSelected = STATE.currentPlatformId === p.id;
+                        const card = document.createElement('div');
+                        card.className = `group/item p-2.5 rounded-xl border flex flex-col gap-1.5 relative transition-all ${isSelected ? 'bg-gold-50/60 border-gold-300 shadow-sm' : 'bg-white/40 border-zinc-200/60 hover:border-zinc-300'}`;
+                        
+                        card.innerHTML = `
+                            <div class="flex items-center justify-between gap-1">
+                                <input type="text" value="${p.name}" onblur="App.Data.updatePlatform('${p.id}', 'name', this.value)" class="bg-transparent font-medium text-xs text-zinc-800 focus:outline-none focus:bg-white border border-transparent focus:border-zinc-200 rounded px-1 w-full admin-editable">
+                                <button onclick="App.Data.deletePlatform('${p.id}')" class="opacity-0 group-hover/item:opacity-100 p-0.5 text-zinc-400 hover:text-rose-500 rounded transition-opacity admin-editable">
+                                    <i data-lucide="trash" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <i data-lucide="user-check" class="w-3 h-3 text-zinc-400 shrink-0"></i>
+                                <input type="text" value="${p.account}" onblur="App.Data.updatePlatform('${p.id}', 'account', this.value)" class="bg-transparent text-[10px] text-zinc-400 focus:outline-none focus:bg-white border border-transparent focus:border-zinc-200 rounded px-1 w-full admin-editable">
+                            </div>
+                            <div onclick="App.Data.switchPlatform('${p.id}')" class="absolute inset-0 z-0 cursor-pointer" style="margin: 28px 24px 0 0;"></div>
+                        `;
+                        container.appendChild(card);
+                    });
+                    
+                    // 刷新动态图标
+                    lucide.createIcons({ attrs: { class: "w-3.5 h-3.5" } });
+                    this.applyRolePermissions();
+                },
+                renderAll() {
+                    this.renderPlatforms();
+                    this.calculateStatsAndCharts();
+
+                    const activeData = this.getFilteredData();
+                    
+                    // 分页切片
+                    const totalRecords = activeData.length;
+                    const totalPages = Math.ceil(totalRecords / STATE.pageSize) || 1;
+                    if (STATE.currentPage > totalPages) STATE.currentPage = totalPages;
+                    
+                    const startIdx = (STATE.currentPage - 1) * STATE.pageSize;
+                    const endIdx = Math.min(startIdx + STATE.pageSize, totalRecords);
+                    const pageData = activeData.slice(startIdx, endIdx);
+
+                    // 控制脚标分页器状态
+                    document.getElementById('paginationInfo').innerText = totalRecords > 0 ? `显示 ${startIdx + 1} - ${endIdx} 条，共 ${totalRecords} 条记录` : '暂无匹配的明细数据记录';
+                    document.getElementById('btnPrevPage').disabled = STATE.currentPage === 1;
+                    document.getElementById('btnNextPage').disabled = STATE.currentPage === totalPages;
+
+                    // 批量操作条响应
+                    const bulkPanel = document.getElementById('bulkActionPanel');
+                    if (STATE.selectedIds.length > 0 && STATE.role === 'admin') {
+                        bulkPanel.classList.remove('hidden');
+                        document.getElementById('selectedCount').innerText = STATE.selectedIds.length;
+                    } else {
+                        bulkPanel.classList.add('hidden');
+                    }
+
+                    // 全选框同步
+                    const selectAllBox = document.getElementById('selectAllCheckbox');
+                    if (pageData.length > 0 && pageData.every(x => STATE.selectedIds.includes(x.id))) {
+                        selectAllBox.checked = true;
+                    } else {
+                        selectAllBox.checked = false;
+                    }
+
+                    // 渲染核心主表
+                    const tbody = document.getElementById('mainTableBody');
+                    tbody.innerHTML = '';
+
+                    if (pageData.length === 0) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="6" class="py-12 text-center text-zinc-400 font-light">
+                                    <div class="flex flex-col items-center gap-1.5">
+                                        <i data-lucide="folder-open" class="w-8 h-8 text-zinc-300"></i>
+                                        当前台账看板无有效明细项目数据
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                        lucide.createIcons();
+                        return;
+                    }
+
+                    pageData.forEach(row => {
+                        const pName = STATE.platforms.find(p => p.id === row.platformId)?.name || '未知平台/全渠道';
+                        const isChecked = STATE.selectedIds.includes(row.id);
+                        
+                        let contentHtml = '';
+                        let amountHtml = '';
+                        let optHtml = '';
+
+                        // 区分渲染流
+                        if (STATE.currentTab === 'expense' || row.__type === 'expense') {
+                            contentHtml = `
+                                <div class="font-medium text-zinc-800">${row.purpose}</div>
+                                <div class="text-[10px] text-zinc-400 mt-0.5">费用流</div>
+                            `;
+                            amountHtml = `<span class="font-semibold text-zinc-900">¥${row.amount.toFixed(2)}</span>`;
+                            
+                            if (STATE.currentTab === 'recycle') {
+                                optHtml = `<button onclick="App.Data.restoreRecord('${row.id}')" class="text-gold-600 hover:text-gold-700 font-medium flex items-center gap-0.5 mx-auto admin-editable"><i data-lucide="refresh-cw"></i> 恢复</button>`;
+                            } else {
+                                optHtml = `
+                                    <div class="flex items-center justify-center gap-3">
+                                        <button onclick="App.UI.openEditExpenseModal('${row.id}')" class="text-zinc-400 hover:text-gold-600 transition-colors"><i data-lucide="edit-3"></i></button>
+                                        <button onclick="App.Data.softDelete('${row.id}', 'expense')" class="text-zinc-400 hover:text-rose-500 transition-colors admin-editable"><i data-lucide="trash-2"></i></button>
+                                    </div>
+                                `;
+                            }
+                        } else {
+                            // 初诊业务成交流水
+                            const subItemsCount = row.items.reduce((a,b)=>a+b.count, 0);
+                            const subItemsTotal = row.items.reduce((a,b)=>a+b.amount, 0);
+                            
+                            const tooltipContent = row.items.map(it => `${it.name}: ${it.count}人/¥${it.amount}`).join(' | ');
+
+                            contentHtml = `
+                                <div class="flex items-center gap-2">
+                                    <span class="px-1.5 py-0.2 bg-gold-50 border border-gold-200 text-gold-700 rounded text-[10px] font-medium">${row.category}</span>
+                                    <div class="font-medium text-zinc-700 truncate max-w-[280px]" title="${tooltipContent}">${tooltipContent}</div>
+                                </div>
+                                <div class="text-[10px] text-zinc-400 mt-0.5">到诊总计: ${subItemsCount} 人</div>
+                            `;
+                            
+                            amountHtml = `<span class="font-bold text-gold-600">¥${subItemsTotal.toFixed(2)}</span>`;
+
+                            if (STATE.currentTab === 'recycle') {
+                                optHtml = `<button onclick="App.Data.restoreRecord('${row.id}')" class="text-gold-600 hover:text-gold-700 font-medium flex items-center gap-0.5 mx-auto admin-editable"><i data-lucide="refresh-cw"></i> 恢复</button>`;
+                            } else {
+                                optHtml = `
+                                    <div class="flex items-center justify-center gap-3">
+                                        <button onclick="App.UI.openEditVisitModal('${row.id}')" class="text-zinc-400 hover:text-gold-600 transition-colors"><i data-lucide="edit-3"></i></button>
+                                        <button onclick="App.Data.softDelete('${row.id}', 'visit')" class="text-zinc-400 hover:text-rose-500 transition-colors admin-editable"><i data-lucide="trash-2"></i></button>
+                                    </div>
+                                `;
+                            }
+                        }
+
+                        const tr = document.createElement('tr');
+                        tr.className = `hover:bg-zinc-50/80 transition-colors ${isChecked ? 'bg-gold-50/20' : ''}`;
+                        tr.innerHTML = `
+                            <td class="py-3.5 px-6">
+                                <input type="checkbox" onchange="App.UI.toggleSelectRow('${row.id}', this)" ${isChecked ? 'checked' : ''} class="rounded border-zinc-300 text-gold-600 focus:ring-gold-500 admin-editable">
+                            </td>
+                            <td class="py-3.5 px-4 tabular-nums font-medium text-zinc-500">${row.date}</td>
+                            <td class="py-3.5 px-4 font-medium text-zinc-800">${pName}</td>
+                            <td class="py-3.5 px-4">${contentHtml}</td>
+                            <td class="py-3.5 px-4 text-right tabular-nums">${amountHtml}</td>
+                            <td class="py-3.5 px-6 text-center">${optHtml}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+
+                    lucide.createIcons({ attrs: { class: "w-3.5 h-3.5" } });
+                    this.applyRolePermissions();
+                },
+                toggleSelectRow(id, el) {
+                    if (el.checked) {
+                        if (!STATE.selectedIds.includes(id)) STATE.selectedIds.push(id);
+                    } else {
+                        STATE.selectedIds = STATE.selectedIds.filter(x => x !== id);
+                    }
+                    this.renderAll();
+                },
+                toggleSelectAll(el) {
+                    const activeData = this.getFilteredData();
+                    const totalRecords = activeData.length;
+                    const startIdx = (STATE.currentPage - 1) * STATE.pageSize;
+                    const endIdx = Math.min(startIdx + STATE.pageSize, totalRecords);
+                    const pageData = activeData.slice(startIdx, endIdx);
+
+                    if (el.checked) {
+                        pageData.forEach(x => { if(!STATE.selectedIds.includes(x.id)) STATE.selectedIds.push(x.id); });
+                    } else {
+                        const pageIds = pageData.map(x => x.id);
+                        STATE.selectedIds = STATE.selectedIds.filter(id => !pageIds.includes(id));
+                    }
+                    this.renderAll();
+                },
+                // 表单联动开启逻辑
+                openAddModal() {
+                    if (STATE.role === 'guest') return;
+                    if (STATE.currentTab === 'visit') {
+                        this.openEditVisitModal(null);
+                    } else {
+                        this.openEditExpenseModal(null);
+                    }
+                },
+                populatePlatformDropdown(domId) {
+                    const select = document.getElementById(domId);
+                    select.innerHTML = STATE.platforms.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                },
+                openEditExpenseModal(id) {
+                    if (STATE.role === 'guest') return;
+                    this.populatePlatformDropdown('expensePlatform');
+                    document.getElementById('expenseForm').reset();
+                    
+                    if (id) {
+                        document.getElementById('expenseModalTitle').innerHTML = `<i data-lucide="edit" class="text-gold-500"></i> 编辑费用流水`;
+                        const exp = STATE.expenses.find(x => x.id === id);
+                        if (exp) {
+                            document.getElementById('expenseId').value = exp.id;
+                            document.getElementById('expensePlatform').value = exp.platformId;
+                            document.getElementById('expenseDate').value = exp.date;
+                            document.getElementById('expensePurpose').value = exp.purpose;
+                            document.getElementById('expenseAmount').value = exp.amount;
+                        }
+                    } else {
+                        document.getElementById('expenseModalTitle').innerHTML = `<i data-lucide="plus-circle" class="text-gold-500"></i> 新增费用流水`;
+                        document.getElementById('expenseId').value = '';
+                        document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
+                        if (STATE.currentPlatformId !== 'all') document.getElementById('expensePlatform').value = STATE.currentPlatformId;
+                    }
+                    this.toggleModal('expenseModal', true);
+                    lucide.createIcons();
+                },
+                openEditVisitModal(id) {
+                    if (STATE.role === 'guest') return;
+                    this.populatePlatformDropdown('visitPlatform');
+                    document.getElementById('visitForm').reset();
+                    document.getElementById('detailRowsContainer').innerHTML = '';
+                    
+                    if (id) {
+                        document.getElementById('visitModalTitle').innerHTML = `<i data-lucide="edit" class="text-gold-500"></i> 重编初诊到诊明细`;
+                        const vis = STATE.visits.find(x => x.id === id);
+                        if (vis) {
+                            document.getElementById('visitId').value = vis.id;
+                            document.getElementById('visitPlatform').value = vis.platformId;
+                            document.getElementById('visitDate').value = vis.date;
+                            document.getElementById('visitCategory').value = vis.category;
+                            
+                            vis.items.forEach(it => this.addDetailRow(it.name, it.count, it.amount));
+                        }
+                    } else {
+                        document.getElementById('visitModalTitle').innerHTML = `<i data-lucide="file-text" class="text-gold-500"></i> 录入到诊闭环项目清单`;
+                        document.getElementById('visitId').value = '';
+                        document.getElementById('visitDate').value = new Date().toISOString().split('T')[0];
+                        if (STATE.currentPlatformId !== 'all') document.getElementById('visitPlatform').value = STATE.currentPlatformId;
+                        
+                        // 默认添加一空白行
+                        this.addDetailRow();
+                    }
+                    
+                    this.calculateModalTotal();
+                    this.toggleModal('visitModal', true);
+                    lucide.createIcons();
+                },
+                addDetailRow(name = '', count = 1, amount = '') {
+                    const container = document.getElementById('detailRowsContainer');
+                    const rowId = 'row_' + Date.now() + Math.random().toString(36).substr(2, 5);
+                    
+                    const div = document.createElement('div');
+                    div.id = rowId;
+                    div.className = "detail-row flex items-center gap-2 animate-fadeIn";
+                    div.innerHTML = `
+                        <input type="text" value="${name}" required placeholder="细分项目名称" class="det-name flex-1 px-2.5 py-1 text-xs bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-gold-500">
+                        <input type="number" value="${count}" required min="1" oninput="App.UI.calculateModalTotal()" placeholder="人数" class="det-count w-14 px-2 py-1 text-xs bg-white border border-zinc-200 rounded-lg text-center focus:outline-none">
+                        <input type="number" step="0.01" value="${amount}" required oninput="App.UI.calculateModalTotal()" placeholder="总计金额" class="det-amount w-24 px-2 py-1 text-xs bg-white border border-zinc-200 rounded-lg text-right focus:outline-none">
+                        <button type="button" onclick="document.getElementById('${rowId}').remove(); App.UI.calculateModalTotal();" class="p-1 text-zinc-400 hover:text-rose-500 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                    `;
+                    container.appendChild(div);
+                    lucide.createIcons({ attrs: { class: "w-3.5 h-3.5" } });
+                },
+                calculateModalTotal() {
+                    const container = document.getElementById('detailRowsContainer');
+                    const rowDivs = container.querySelectorAll('.detail-row');
+                    let sum = 0;
+                    rowDivs.forEach(row => {
+                        const amount = parseFloat(row.querySelector('.det-amount').value) || 0;
+                        sum += amount;
+                    });
+                    document.getElementById('visitTotalComputed').innerText = `¥${sum.toFixed(2)}`;
+                }
+            };
+
+            // ==================== 4. 异步云端同步引擎 (GitHub Gist REST API) ====================
+            const CloudEngine = {
+                async silentPushGist() {
+                    // 无感秒级推送
+                    const { gistToken, gistId } = STATE.cloud;
+                    if (!gistToken || !gistId) return;
+                    
+                    const payload = {
+                        description: "Marketing System Automated Sync Backup",
+                        files: {
+                            "marketing_data.json": {
+                                content: JSON.stringify({
+                                    platforms: STATE.platforms,
+                                    expenses: STATE.expenses,
+                                    visits: STATE.visits
+                                }, null, 2)
+                            }
+                        }
+                    };
+
+                    try {
+                        await fetch(`https://api.github.com/gists/${gistId}`, {
+                            method: 'PATCH',
+                            headers: { 'Authorization': `token ${gistToken}`, 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                    } catch (e) {
+                        // 仅静默流控，不破坏本地输入体验
+                    }
+                },
+                async syncGistPush() {
+                    const { gistToken, gistId } = STATE.cloud;
+                    if (!gistToken) { UIEngine.showToast('推送失败：请先配置有效的 Access Token', 'error'); return; }
+
+                    UIEngine.showToast('正在向 GitHub 发起高阶拓扑同步...', 'info');
+                    
+                    const payload = {
+                        description: "Marketing System Sync Backup",
+                        public: false,
+                        files: {
+                            "marketing_data.json": {
+                                content: JSON.stringify({
+                                    platforms: STATE.platforms,
+                                    expenses: STATE.expenses,
+                                    visits: STATE.visits
+                                }, null, 2)
+                            }
+                        }
+                    };
+
+                    const url = gistId ? `https://api.github.com/gists/${gistId}` : `https://api.github.com/gists`;
+                    const method = gistId ? 'PATCH' : 'POST';
+
+                    try {
+                        const res = await fetch(url, {
+                            method: method,
+                            headers: { 'Authorization': `token ${gistToken}`, 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        const data = await res.json();
+                        
+                        if (res.ok) {
+                            if (!gistId) {
+                                STATE.cloud.gistId = data.id;
+                                document.getElementById('cfgGistId').value = data.id;
+                                localStorage.setItem('PROMOTION_SYS_CLOUD', JSON.stringify(STATE.cloud));
+                            }
+                            UIEngine.showToast('数据已成功硬同步至 GitHub 云端独立沙箱！', 'success');
+                        } else {
+                            UIEngine.showToast(`同步失败: ${data.message}`, 'error');
+                        }
+                    } catch(e) {
+                        UIEngine.showToast('网络链路异常，请检查拦截规则', 'error');
+                    }
+                },
+                async syncGistPull() {
+                    const { gistToken, gistId } = STATE.cloud;
+                    if (!gistToken || !gistId) { UIEngine.showToast('拉取失败：必须配置 Token 与完整 Gist ID', 'error'); return; }
+
+                    UIEngine.showToast('正在从云端拉取覆盖历史...', 'info');
+
+                    try {
+                        const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+                            method: 'GET',
+                            headers: { 'Authorization': `token ${gistToken}` }
+                        });
+                        const data = await res.json();
+
+                        if (res.ok) {
+                            const content = data.files["marketing_data.json"]?.content;
+                            if (content) {
+                                const parsed = JSON.parse(content);
+                                STATE.platforms = parsed.platforms || [];
+                                STATE.expenses = parsed.expenses || [];
+                                STATE.visits = parsed.visits || [];
+                                
+                                DataEngine.saveAndRefresh();
+                                UIEngine.showToast('本地状态已与云端同步，全覆盖完成！', 'success');
+                                UIEngine.toggleModal('settingsModal', false);
+                            } else {
+                                UIEngine.showToast('云端目标文件损坏或不匹配', 'warning');
+                            }
+                        } else {
+                            UIEngine.showToast(`拉取失败: ${data.message}`, 'error');
+                        }
+                    } catch(e) {
+                        UIEngine.showToast('同步通信断开，请重试', 'error');
+                    }
+                }
+            };
+
+            // 返回对外暴露代理接口
+            return {
+                Init: () => {
+                    DataEngine.init();
+                    UIEngine.init();
+                },
+                Data: DataEngine,
+                UI: UIEngine,
+                Cloud: CloudEngine
+            };
+        })();
+
+        // 绑定生命周期首发入口
+        document.addEventListener('DOMContentLoaded', () => App.Init());
+    </script>
+</body>
+</html>
