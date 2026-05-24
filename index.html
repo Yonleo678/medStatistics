@@ -504,7 +504,7 @@
                         try {
                             const decoded = JSON.parse(decodeURIComponent(escape(atob(encodedData))));
                             STATE.platforms = decoded.platforms || [];
-                            STATE.expenses = decoded.expenses || [];
+                            STATE。expenses = decoded.expenses || [];
                             STATE.visits = decoded.visits || [];
                             UIEngine.showToast('成功解析魔术分发链路数据', 'success');
                         } catch (e) {
@@ -560,7 +560,7 @@
                     UIEngine.applyRolePermissions();
                     UIEngine.showToast(`系统安全上下文切换为: ${role === 'admin' ? '管理员' : '只读游客'}`, 'success');
                     this.saveAndRefresh();
-                    UIEngine.toggleModal('settingsModal', false);
+                    UIEngine。toggleModal('settingsModal', false);
                 },
                 // 平台相关控制
                 addPlatform() {
